@@ -14,12 +14,18 @@ class SentimentPredictor:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "models"))
         
-        # We always use the main model trained in train.py
-        self.model_path = os.path.join(MODELS_DIR, f"logistic_regression.joblib")
+        self.model_type = model_type
+        # We load the specified model
+        self.model_path = os.path.join(MODELS_DIR, f"{model_type}.joblib")
         self.tfidf_path = os.path.join(MODELS_DIR, "tfidf_vectorizer.joblib")
         
         if not os.path.exists(self.model_path) or not os.path.exists(self.tfidf_path):
-            raise FileNotFoundError(f"❌ Models or Vectorizer not found at {MODELS_DIR}. Please run training first.")
+            # Fallback to logistic_regression if specific type not found
+            self.model_type = "logistic_regression"
+            self.model_path = os.path.join(MODELS_DIR, "logistic_regression.joblib")
+            
+        if not os.path.exists(self.model_path):
+            raise FileNotFoundError(f"❌ Models not found at {MODELS_DIR}. Please run training first.")
             
         self.model = joblib.load(self.model_path)
         self.tfidf = joblib.load(self.tfidf_path)
@@ -47,6 +53,13 @@ class SentimentPredictor:
         # Step 4: Combine
         X_combined = hstack([X_tfidf, X_extra])
         
+        # Clamp negative values for Naive Bayes (which requires positive features)
+        if self.model_type == "naive_bayes":
+            if hasattr(X_combined, "data"):
+                X_combined.data[X_combined.data < 0] = 0
+            else:
+                X_combined[X_combined < 0] = 0
+            
         # Step 5: Inference
         prediction = self.model.predict(X_combined)[0]
         probabilities = self.model.predict_proba(X_combined)[0]

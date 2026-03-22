@@ -19,6 +19,6 @@ results/
 Thumbs.db
 
 # Data (Sensitive/Large)
-data/*.csv
+# data/*.csv
 !data/generate_tweets.py
 !data/prepare_data.py
